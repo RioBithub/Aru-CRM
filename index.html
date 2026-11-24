@@ -411,10 +411,10 @@ function requestGPS(){if(!state.me)return;if(!('geolocation' in navigator)){gpsE
 function startGPS(){stopGPS();if(!('geolocation' in navigator)){gpsError();return}state.gpsWatch=navigator.geolocation.watchPosition(acceptGPS,gpsError,{enableHighAccuracy:true,maximumAge:0,timeout:25000});state.gpsTimer=setInterval(()=>{if(state.me && !document.hidden)requestGPS();updateGPSUI()},45000);document.addEventListener('visibilitychange',onVisible);updateGPSUI()}
 function onVisible(){if(!document.hidden&&state.me)requestGPS()}
 function updateGPSUI(){if(!state.me)return;const ok=!!gpsFresh();$('gpsGate').hidden=ok||!!state.me.mustChangePassword;const pill=$('gpsPill');pill.classList.toggle('ok',ok);pill.innerHTML=`<span class="dot"></span>${ok?'GPS aktif':'GPS wajib aktif'}`;$('formGpsText').textContent=ok?`${state.gps.latitude.toFixed(6)}, ${state.gps.longitude.toFixed(6)} · Akurasi ±${state.gps.accuracyMeters} m`:'Lokasi belum tersedia atau kedaluwarsa. Aktifkan izin GPS.'}
-async function freshPosition(){
+async function freshPosition(force=false){
   // A recent fix from watchPosition is equally valid; do not request a second fix
   // during submission when the app is already showing "GPS aktif".
-  if(gpsFresh())return state.gps;
+  if(!force&&gpsFresh())return state.gps;
   if(!navigator.geolocation)throw new Error('Browser tidak mendukung GPS.');
   return new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(
     pos=>{acceptGPS(pos);if(gpsFresh())resolve(state.gps);else reject(new Error('GPS terlalu lama. Klik Perbarui GPS lalu coba lagi.'))},
@@ -581,7 +581,7 @@ $$('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.view==
 $('topProfile').addEventListener('click',()=>view('profile'));
 $('loginForm').addEventListener('submit',login);$('registerForm').addEventListener('submit',register);
 $('logoutBtn').addEventListener('click',()=>doLogout());$('gateLogout').addEventListener('click',()=>doLogout());$('firstLogout').addEventListener('click',()=>doLogout());
-$('gateRetry').addEventListener('click',requestGPS);$('refreshGPS').addEventListener('click',async()=>{try{await freshPosition();toast('GPS berhasil diperbarui.')}catch(e){toast(e.message,true)}});
+$('gateRetry').addEventListener('click',requestGPS);$('refreshGPS').addEventListener('click',async()=>{try{await freshPosition(true);toast('GPS berhasil diperbarui.')}catch(e){toast(e.message,true)}});
 $('visitForm').addEventListener('submit',e=>{e.preventDefault();saveVisit('completed')});$('saveDraftBtn').addEventListener('click',()=>saveVisit('draft'));
 $('resetFormBtn').addEventListener('click',()=>{if(confirm('Kosongkan formulir saat ini?'))resetVisitForm()});$('photoInput').addEventListener('change',addPhotos);$('clearSignature').addEventListener('click',clearSignature);
 $('photoGrid').addEventListener('click',e=>{const b=e.target.closest('[data-removephoto]');if(!b)return;state.photos.splice(Number(b.dataset.removephoto),1);renderPhotos()});
