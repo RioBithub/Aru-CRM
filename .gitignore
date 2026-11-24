@@ -1,0 +1,18 @@
+# Data & file lampiran hanya disimpan di VPS, tidak di GitHub
+data.json
+*.sqlite
+*.db
+.env
+.env.*
+!.env.example
+uploads/
+storage/
+backups/
+backup/
+logs/
+*.log
+*.zip
+node_modules/
+.DS_Store
+.idea/
+.vscode/
