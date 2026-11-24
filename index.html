@@ -313,9 +313,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="toolbar" style="margin-bottom:15px"><input class="input search" id="visitSearch" placeholder="Cari vendor/klien, judul, kegiatan, atau pegawai..."><div class="toolbar"><select id="partyFilter" class="input" style="width:auto"><option value="all">Semua pihak</option><option value="vendor">Vendor</option><option value="klien">Klien</option><option value="mitra">Mitra</option><option value="internal">Internal</option><option value="lainnya">Lainnya</option></select><select id="visitFilter" class="input" style="width:auto"><option value="all">Semua status</option><option value="completed">Selesai</option><option value="draft">Draft</option><option id="trashOption" class="admin-only" value="trash" hidden>Sampah (Admin)</option></select><button id="exportJson" class="btn btn-outline">Ekspor JSON</button><button id="exportCsv" class="btn btn-outline">Ekspor CSV</button></div></div>
       <div class="card table-wrap"><table class="table"><thead><tr><th>Waktu</th><th>Vendor / Klien / Pihak</th><th>Petugas</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="visitRows"></tbody></table><div id="visitEmpty" class="empty" hidden><h3>Belum ada laporan</h3><p>Buat laporan aktivitas pertama Anda.</p></div></div>
     </section>
-    <section id="view-users" class="view"><div class="section-title"><div><h2>Manajemen akun</h2><p>Persetujuan pendaftaran dan pengelolaan pegawai.</p></div><button id="newUserBtn" class="btn btn-primary">+ Buat akun pegawai</button></div>
-      <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="card stat"><div class="stat-top">Total pegawai <span>♙</span></div><b id="userTotal">0</b></div><div class="card stat"><div class="stat-top">Menunggu persetujuan <span>◷</span></div><b id="userPending">0</b></div><div class="card stat"><div class="stat-top">Aktif <span>✓</span></div><b id="userActive">0</b></div></div>
-      <div class="card table-wrap"><table class="table"><thead><tr><th>Pegawai</th><th>Bagian & Jabatan</th><th>Role</th><th>Status</th><th>Aksi admin</th></tr></thead><tbody id="userRows"></tbody></table></div>
+    <section id="view-users" class="view"><div class="section-title"><div><h2>Manajemen akun</h2><p>Kelola pegawai, admin, persetujuan pendaftaran, dan hak akses.</p></div><button id="newUserBtn" class="btn btn-primary">+ Buat akun</button></div>
+      <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="card stat"><div class="stat-top">Total akun <span>♙</span></div><b id="userTotal">0</b></div><div class="card stat"><div class="stat-top">Menunggu persetujuan <span>◷</span></div><b id="userPending">0</b></div><div class="card stat"><div class="stat-top">Aktif <span>✓</span></div><b id="userActive">0</b></div></div>
+      <div class="card table-wrap"><table class="table"><thead><tr><th>Pengguna</th><th>Bagian & Jabatan</th><th>Role</th><th>Status</th><th>Aksi admin</th></tr></thead><tbody id="userRows"></tbody></table></div>
     </section>
     <section id="view-profile" class="view"><div class="section-title"><div><h2>Profil & keamanan akun</h2><p>Semua pengguna dapat mengubah profil dan password masing-masing.</p></div></div>
       <div class="profile-grid"><div class="card profile-hero"><div class="avatar profile-avatar" id="profileAvatar">A</div><h3 id="profileName">Pengguna</h3><p id="profilePosition">Pegawai</p><span class="badg" id="profileRole">Pegawai</span><div class="profile-photo"><label class="btn btn-outline btn-wide" for="avatarInput">↥ Ubah foto profil</label><input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" hidden><p class="hint" style="margin-top:9px">Foto disimpan bersama profil akun.</p></div></div>
@@ -335,19 +335,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="field"><label>Tenggat tindak lanjut (opsional)</label><input class="input" type="date" id="progressFollowup"></div>
     <div class="field"><label>Lampiran perkembangan (maksimal 4 per update)</label><input class="input" type="file" id="progressFiles" accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,.txt,.pdf" multiple><p class="hint">Screenshot chat WA, ekspor TXT, PDF atau foto, sekitar 480 KB/file. Total bukti maksimal 12 file per laporan.</p></div><div id="progressFileList" class="file-list"></div>
     <button type="submit" class="btn btn-primary">Simpan perkembangan</button></form></div></dialog>
-<dialog id="userDialog"><div class="dialog-head"><h2>Buat akun pegawai</h2><button class="btn btn-sm" data-close="userDialog">✕</button></div><div class="dialog-body"><form id="createUserForm" class="stack"><div class="fields"><div class="field"><label>Nama lengkap *</label><input class="input" name="name" required minlength="3"></div><div class="field"><label>Username *</label><input class="input" name="username" minlength="3" maxlength="30" required></div><div class="field"><label>Password sementara *</label><input class="input" type="password" name="password" minlength="8" required></div><div class="field"><label>Bagian / Divisi</label><select class="input dept-options" name="department"></select></div><div class="field"><label>Jabatan</label><input class="input" name="position"></div><div class="field"><label>Email</label><input class="input" type="email" name="email"></div></div><p class="hint">Akun langsung aktif. Pegawai akan diminta mengganti password saat pertama kali login.</p><div class="toolbar" style="justify-content:end"><button class="btn btn-primary" type="submit">Buat & aktifkan akun</button></div></form></div></dialog>
-<dialog id="editUserDialog" aria-labelledby="editUserDialogTitle"><div class="dialog-head"><h2 id="editUserDialogTitle">Edit akun pegawai</h2><button class="btn btn-sm" type="button" data-close="editUserDialog" aria-label="Tutup">✕</button></div>
+<dialog id="userDialog"><div class="dialog-head"><h2>Buat akun baru</h2><button class="btn btn-sm" data-close="userDialog">✕</button></div><div class="dialog-body"><form id="createUserForm" class="stack"><div class="fields"><div class="field"><label>Nama lengkap *</label><input class="input" name="name" required minlength="3"></div><div class="field"><label>Username *</label><input class="input" name="username" minlength="3" maxlength="30" required></div><div class="field"><label>Hak akses akun *</label><select class="input" name="role" id="newUserRole" required><option value="staff">Pegawai</option><option value="admin">Administrator</option></select></div><div class="field"><label>Password sementara *</label><input class="input" type="password" name="password" minlength="8" required></div><div class="field"><label>Bagian / Divisi</label><select class="input dept-options" name="department"></select></div><div class="field"><label>Jabatan</label><input class="input" name="position"></div><div class="field"><label>Email</label><input class="input" type="email" name="email"></div></div><p class="hint">Akun langsung aktif. Password sementara wajib diganti saat login pertama. <strong>Admin memiliki akses ke seluruh laporan, persetujuan akun, serta manajemen pengguna.</strong></p><div class="toolbar" style="justify-content:end"><button class="btn btn-primary" type="submit">Buat & aktifkan akun</button></div></form></div></dialog>
+<dialog id="editUserDialog" aria-labelledby="editUserDialogTitle"><div class="dialog-head"><h2 id="editUserDialogTitle">Edit akun pengguna</h2><button class="btn btn-sm" type="button" data-close="editUserDialog" aria-label="Tutup">✕</button></div>
   <div class="dialog-body"><form id="editUserForm" class="stack">
     <input type="hidden" id="editUserId">
     <div class="fields">
       <div class="field"><label for="editUsername">Username (tidak bisa diubah)</label><input class="input" id="editUsername" disabled></div>
-      <div class="field"><label for="editFullname">Nama lengkap *</label><input class="input" id="editFullname" minlength="3" maxlength="100" required></div>
+      <div class="field"><label for="editFullname">Nama lengkap *</label><input class="input" id="editFullname" minlength="3" maxlength="100" required></div><div class="field"><label for="editRole">Hak akses</label><select class="input" id="editRole"><option value="staff">Pegawai</option><option value="admin">Administrator</option></select><p class="hint">Perubahan hak akses akan mengakhiri sesi login pengguna. Pegawai yang dijadikan admin wajib mengganti password saat masuk kembali.</p></div>
       <div class="field"><label for="editDepartment">Bagian / Divisi</label><select class="input dept-options" id="editDepartment"></select></div>
       <div class="field"><label for="editPosition">Jabatan</label><input class="input" id="editPosition" maxlength="100"></div>
       <div class="field"><label for="editEmail">Email</label><input class="input" type="email" id="editEmail" maxlength="160"></div>
       <div class="field"><label for="editPhone">Nomor HP</label><input class="input" type="tel" id="editPhone" maxlength="40"></div>
     </div>
-    <div class="audit-note"><strong>Reset password pegawai (opsional)</strong><p class="hint">Kosongkan kedua kolom jika tidak ingin mengubah password. Jika diisi, sesi login pegawai akan diputus dan pegawai wajib mengganti password sementara saat masuk kembali.</p></div>
+    <div class="audit-note"><strong>Reset password pengguna (opsional)</strong><p class="hint">Kosongkan kedua kolom jika tidak ingin mengubah password. Jika diisi, sesi login akan diputus dan pengguna wajib mengganti password sementara saat masuk kembali.</p></div>
     <div class="fields">
       <div class="field"><label for="editNewPassword">Password sementara baru</label><input class="input" id="editNewPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Kosongkan jika tidak direset"></div>
       <div class="field"><label for="editConfirmPassword">Konfirmasi password sementara</label><input class="input" id="editConfirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Ulangi password baru"></div>
@@ -383,8 +383,24 @@ function view(which){if(!state.me)return;if(which==='users'&&state.me.role!=='ad
 async function refresh(){const result=await api('/api/visits');state.visits=result.visits;const organizations=[...new Set(state.visits.map(v=>v.organizationName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id'));$('orgSuggestions').innerHTML=organizations.map(v=>`<option value="${esc(v)}"></option>`).join('');if(state.me.role==='admin'){const [u,deleted]=await Promise.all([api('/api/users'),api('/api/visits/trash')]);state.users=u.users;state.trash=deleted.visits;renderUsers()}else{state.trash=[]}renderDashboard();renderVisits()}
 function renderDashboard(){const vs=state.visits;const month=new Date().toISOString().slice(0,7);$('statTotal').textContent=vs.length;$('statDone').textContent=vs.filter(v=>v.status==='completed').length;$('statDraft').textContent=vs.filter(v=>v.status==='draft').length;$('statFourth').textContent=vs.filter(v=>v.createdAt?.startsWith(month)).length;$('statFourthLabel').innerHTML='Laporan bulan ini <span>◎</span>';$('recentList').innerHTML=vs.length?vs.slice(0,6).map(v=>`<div class="recent" data-open="${v.id}"><div class="avatar">◎</div><div class="copy"><b>${esc(v.organizationName)}</b><small>${fmt(v.createdAt)} · ${esc(v.reporter)}</small></div><span class="badg ${v.status==='draft'?'draft':''}">${v.status==='draft'?'Draft':'Selesai'}</span></div>`).join(''):'<div class="empty"><h3>Belum ada aktivitas</h3><p>Laporan yang dibuat akan tampil di sini.</p></div>'}
 function renderVisits(){const q=$('visitSearch').value.toLowerCase().trim(),filter=$('visitFilter').value;const vs=state.visits.filter(v=>(filter==='all'||v.status===filter)&&($('partyFilter').value==='all'||v.partyType===$('partyFilter').value)&&[v.organizationName,v.purpose,v.reporter,v.contactName].some(s=>String(s||'').toLowerCase().includes(q)));$('visitScope').textContent=state.me.role==='admin'?'Seluruh kunjungan pegawai yang tercatat.':'Seluruh aktivitas Anda yang tercatat.';$('visitRows').innerHTML=vs.map(v=>`<tr><td><b>${fmt(v.createdAt)}</b><br><span class="muted">${esc(v.visitType)}</span></td><td><b>${esc(v.organizationName)}</b><br><span class="muted">${esc(v.contactName||'-')}</span></td><td>${esc(v.reporter)}</td><td><span class="badg ${v.status==='draft'?'draft':''}">${v.status==='draft'?'Draft':'Selesai'}</span></td><td><div class="toolbar" style="justify-content:start"><button class="btn btn-sm" data-open="${v.id}">Detail</button>${v.status==='draft'&&(v.userId===state.me.id||state.me.role==='admin')?`<button class="btn btn-sm btn-outline" data-edit="${v.id}">Edit</button>`:''}</div></td></tr>`).join('');$('visitEmpty').hidden=vs.length>0}
-function renderUsers(){const us=state.users; $('userTotal').textContent=us.filter(u=>u.role!=='admin').length;$('userPending').textContent=us.filter(u=>u.status==='pending').length;$('userActive').textContent=us.filter(u=>u.status==='active').length;
-  $('userRows').innerHTML=us.slice().sort((a,b)=>Number(a.status!=='pending')-Number(b.status!=='pending')).map(u=>`<tr><td><div class="person"><span class="avatar" style="width:34px;height:34px">${avatarHTML(u.profilePhoto,u.name)}</span><div><b>${esc(u.name)}</b><br><span class="muted">@${esc(u.username)}</span></div></div></td><td><b>${esc(u.department)}</b><br><span class="muted">${esc(u.position)}</span></td><td><span class="badg ${u.role==='admin'?'admin':''}">${u.role==='admin'?'Admin':'Pegawai'}</span></td><td><span class="badg ${esc(u.status)}">${({active:'Aktif',pending:'Menunggu',rejected:'Ditolak',disabled:'Nonaktif'})[u.status]||esc(u.status)}</span></td><td>${u.role==='admin'?'<span class="muted">—</span>':`<div class="toolbar" style="justify-content:start;flex-wrap:wrap"><button class="btn btn-sm btn-outline" data-edituser="${u.id}">Edit akun</button>${u.status==='pending'?`<button class="btn btn-sm btn-primary" data-userstatus="active" data-uid="${u.id}">Setujui</button> <button class="btn btn-sm btn-danger" data-userstatus="rejected" data-uid="${u.id}">Tolak</button>`:u.status==='active'?`<button class="btn btn-sm btn-danger" data-userstatus="disabled" data-uid="${u.id}">Nonaktifkan</button>`:`<button class="btn btn-sm" data-userstatus="active" data-uid="${u.id}">Aktifkan</button>`}</div>`}</td></tr>`).join('')}
+function renderUsers(){
+  const us=state.users;
+  $('userTotal').textContent=us.length;
+  $('userPending').textContent=us.filter(u=>u.status==='pending').length;
+  $('userActive').textContent=us.filter(u=>u.status==='active').length;
+  $('userRows').innerHTML=us.slice().sort((a,b)=>Number(a.status!=='pending')-Number(b.status!=='pending')).map(u=>{
+    let actions='<span class="muted">Akun Anda</span>';
+    if(u.id!==state.me.id){
+      const statusAction=u.role==='admin'?'':u.status==='pending'
+        ? `<button class="btn btn-sm btn-primary" data-userstatus="active" data-uid="${u.id}">Setujui</button> <button class="btn btn-sm btn-danger" data-userstatus="rejected" data-uid="${u.id}">Tolak</button>`
+        : u.status==='active'
+          ? `<button class="btn btn-sm btn-danger" data-userstatus="disabled" data-uid="${u.id}">Nonaktifkan</button>`
+          : `<button class="btn btn-sm" data-userstatus="active" data-uid="${u.id}">Aktifkan</button>`;
+      actions=`<div class="toolbar" style="justify-content:start;flex-wrap:wrap"><button class="btn btn-sm btn-outline" data-edituser="${u.id}">Edit akun</button>${statusAction}</div>`;
+    }
+    return `<tr><td><div class="person"><span class="avatar" style="width:34px;height:34px">${avatarHTML(u.profilePhoto,u.name)}</span><div><b>${esc(u.name)}</b><br><span class="muted">@${esc(u.username)}</span></div></div></td><td><b>${esc(u.department)}</b><br><span class="muted">${esc(u.position)}</span></td><td><span class="badg ${u.role==='admin'?'admin':''}">${u.role==='admin'?'Admin':'Pegawai'}</span></td><td><span class="badg ${esc(u.status)}">${({active:'Aktif',pending:'Menunggu',rejected:'Ditolak',disabled:'Nonaktif'})[u.status]||esc(u.status)}</span></td><td>${actions}</td></tr>`;
+  }).join('');
+}
 async function login(e){e.preventDefault();try{const r=await api('/api/auth/login','POST',{username:$('loginUsername').value,password:$('loginPassword').value});state.me=r.user;$('loginPassword').value='';await showApp();toast('Login berhasil. Pastikan GPS aktif.')}catch(err){toast(err.message,true)}}
 async function register(e){e.preventDefault();try{const r=await api('/api/auth/register','POST',formObj(e.target));e.target.reset();setAuthTab('login');toast(r.message)}catch(err){toast(err.message,true)}}
 async function doLogout(callServer=true){if(callServer){try{await api('/api/auth/logout','POST',{})}catch{}}stopGPS();state.visits=[];state.trash=[];state.users=[];state.photos=[];state.signature='';state.me=null;showAuth();}
@@ -421,12 +437,14 @@ function exportCSV(){const cols=['id','createdAt','status','reporter','visitType
 async function changeUserStatus(id,status){const u=state.users.find(x=>x.id===id);if(!u)return;const verb=({active:'aktifkan / setujui',disabled:'nonaktifkan',rejected:'tolak'})[status];if(!confirm(`Yakin ingin ${verb} akun ${u.name}?`))return;try{await api(`/api/users/${id}/status`,'POST',{status});await refresh();toast('Status akun diperbarui.')}catch(e){toast(e.message,true)}}
 function openEditUser(id){
   if(state.me?.role!=='admin')return;
-  const u=state.users.find(x=>x.id===id&&x.role!=='admin');
-  if(!u){toast('Pegawai tidak ditemukan.',true);return}
+  const u=state.users.find(x=>x.id===id&&x.id!==state.me.id);
+  if(!u){toast('Akun tidak ditemukan atau tidak dapat diedit.',true);return}
   $('editUserForm').reset();
   $('editUserId').value=u.id;
   $('editUsername').value=u.username;
   $('editFullname').value=u.name;
+  $('editRole').value=u.role;
+  $('editRole').querySelector('option[value="admin"]').disabled=u.status!=='active'&&u.role!=='admin';
   $('editDepartment').value=u.department;
   if($('editDepartment').value!==u.department){const option=new Option(u.department,u.department);$('editDepartment').add(option);$('editDepartment').value=u.department}
   $('editPosition').value=u.position||'';
@@ -438,13 +456,19 @@ function openEditUser(id){
 async function saveEditUser(e){
   e.preventDefault();if(state.me?.role!=='admin')return;
   const id=$('editUserId').value;
-  const user=state.users.find(x=>x.id===id&&x.role!=='admin');
-  if(!user){toast('Pegawai tidak ditemukan.',true);return}
+  const user=state.users.find(x=>x.id===id&&x.id!==state.me.id);
+  if(!user){toast('Akun tidak ditemukan atau tidak dapat diedit.',true);return}
   const password=$('editNewPassword').value;
+  const role=$('editRole').value;
   if(password!==$('editConfirmPassword').value){toast('Konfirmasi password tidak sama.',true);return}
   if(password && (password.length<8||password.length>128)){toast('Password baru harus 8–128 karakter.',true);return}
-  if(password&&!confirm(`Reset password ${user.name}? Semua sesi login pegawai tersebut akan dikeluarkan dan pegawai wajib mengganti password sementara saat masuk.`))return;
-  const body={name:$('editFullname').value,department:$('editDepartment').value,position:$('editPosition').value,email:$('editEmail').value,phone:$('editPhone').value};
+  if(role!==user.role){
+    const desc=role==='admin'
+      ? 'Berikan hak ADMIN kepada '+user.name+'? Pengguna bisa melihat semua laporan, mengelola akun, dan mengubah hak akses admin lainnya.'
+      : 'Cabut akses ADMIN dari '+user.name+'? Pengguna tidak lagi dapat mengelola laporan dan akun pegawai.';
+    if(!confirm(desc+'\nSesi login pengguna akan diputus.'))return;
+  }else if(password && !confirm('Reset password '+user.name+'? Semua sesi login pengguna tersebut akan dikeluarkan.'))return;
+  const body={name:$('editFullname').value,role,department:$('editDepartment').value,position:$('editPosition').value,email:$('editEmail').value,phone:$('editPhone').value};
   if(password)body.password=password;
   try{
     const r=await api(`/api/users/${encodeURIComponent(id)}/edit`,'POST',body);
@@ -452,7 +476,15 @@ async function saveEditUser(e){
     await refresh();toast(r.message);
   }catch(err){toast(err.message,true)}
 }
-async function createUser(e){e.preventDefault();try{const r=await api('/api/users','POST',formObj(e.target));$('userDialog').close();e.target.reset();await refresh();toast(r.message)}catch(err){toast(err.message,true)}}
+async function createUser(e){
+  e.preventDefault();
+  const body=formObj(e.target);
+  if(body.role==='admin'&&!confirm('Buat akun ADMIN baru? Akun ini memiliki akses seluruh laporan, data pegawai, dan pengaturan pengguna.'))return;
+  try{
+    const r=await api('/api/users','POST',body);
+    $('userDialog').close();e.target.reset();await refresh();toast(r.message);
+  }catch(err){toast(err.message,true)}
+}
 async function updateProfile(e){e.preventDefault();try{const r=await api('/api/profile','POST',{name:$('profileFullname').value,department:$('profileDepartment').value,position:$('profileJob').value,email:$('profileEmail').value,phone:$('profilePhone').value,profilePhoto:state.profilePhoto});state.me=r.user;updateMeUI();toast(r.message);await refresh()}catch(err){toast(err.message,true)}}
 async function updateAvatar(e){try{if(!e.target.files?.length)return;state.profilePhoto=await imageFileToDataUrl(e.target.files[0],450,350000);$('profileAvatar').innerHTML=avatarHTML(state.profilePhoto,state.me.name);toast('Foto siap. Klik Simpan profil untuk menyimpan.')}catch(err){toast(err.message,true)}e.target.value=''}
 async function changePassword(e,first=false){e.preventDefault();const f=first?formObj(e.target):{currentPassword:$('currentPassword').value,password:$('newPassword').value,confirm:$('confirmPassword').value};if(f.password!==f.confirm){toast('Konfirmasi password baru tidak sama.',true);return}try{const r=await api('/api/auth/password','POST',{currentPassword:f.currentPassword,password:f.password});state.me=r.user;e.target.reset();if(first){$('firstPasswordDialog').close();await refresh();updateGPSUI()}toast(r.message)}catch(err){toast(err.message,true)}}
