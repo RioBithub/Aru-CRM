@@ -31,7 +31,7 @@ const verifyPassword = (pwd, stored) => {
   } catch { return false; }
 };
 const fresh = () => ({
-  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.3.0', storage: 'json-server' },
+  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.4.0', storage: 'json-server' },
   settings: { gpsRequired: true, maxPhotos: 4, maxPhotoWidth: 1200, maxImageBytes: 700000 },
   departments: ['Operasional', 'Keuangan', 'SDM & Umum', 'IT', 'Manajemen', 'Sekretariat', 'Pemasaran', 'Lainnya'],
   visitTypes: ['Kunjungan Vendor','Kunjungan Klien','Pertemuan Mitra','Koordinasi WhatsApp','Rapat / Diskusi','Monitoring Pekerjaan','Tindak Lanjut','Laporan Lainnya'],
@@ -186,8 +186,9 @@ function makeVisit(input, user, prev=null) {
   if (!v.organizationName || !v.purpose) throw {status:400,message:'Nama organisasi dan tujuan kegiatan wajib diisi.'};
   if (v.status==='completed'&&!v.outcome) throw {status:400,message:'Isi hasil/ringkasan kegiatan sebelum menyelesaikan laporan.'};
   v.gps=validateGps(input.gps, activityMode==='onsite'||activityMode==='hybrid',prev);
-  if (!Array.isArray(input.photos)||input.photos.length>4||!input.photos.every(x=>imageValid(x,700000)))
-    throw {status:400,message:'Maksimal 4 foto lapangan, masing-masing dibatasi ukurannya.'};
+  if (!Array.isArray(input.photos)||input.photos.length>4||
+      !input.photos.every(x=>typeof x==='string' && x.length>100 && imageValid(x,700000)))
+    throw {status:400,message:'Maksimal 4 foto kegiatan dalam format JPG/PNG/WebP yang valid.'};
   v.photos=input.photos;
   if (!imageValid(input.signature,400000)) throw {status:400,message:'Tanda tangan tidak valid.'};
   v.signature=input.signature||'';
@@ -197,6 +198,16 @@ function makeVisit(input, user, prev=null) {
   if(rawFields.length>12) throw {status:400,message:'Maksimal 12 kolom informasi tambahan.'};
   v.customFields=rawFields.map(f=>({label:txt(f?.label,80),value:txt(f?.value,1200)})).filter(f=>f.label&&f.value);
   v.evidence=parseEvidence(input.evidence||[],6);
+  // Drafts may be incomplete, but a completed report must have evidence of the activity.
+  if (v.status==='completed') {
+    const fieldActivity=activityMode==='onsite'||activityMode==='hybrid';
+    if (fieldActivity && !v.photos.length)
+      throw {status:400,message:'Laporan tatap muka/lapangan wajib melampirkan minimal 1 foto kegiatan.'};
+    if (!v.evidence.length)
+      throw {status:400,message:fieldActivity
+        ? 'Laporan tatap muka/lapangan wajib memiliki minimal 1 bukti pendukung operasional.'
+        : 'Laporan jarak jauh/elektronik wajib memiliki minimal 1 bukti komunikasi atau dokumen pendukung.'};
+  }
   if (!Array.isArray(v.updates)) v.updates=[];
   if (v.evidence.length+v.updates.reduce((n,x)=>n+(x.evidence?.length||0),0)>12)
     throw {status:400,message:'Batas total 12 lampiran per laporan sudah tercapai.'};
