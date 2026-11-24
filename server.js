@@ -31,7 +31,7 @@ const verifyPassword = (pwd, stored) => {
   } catch { return false; }
 };
 const fresh = () => ({
-  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.0.0', storage: 'json-server' },
+  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.1.0', storage: 'json-server' },
   settings: { gpsRequired: true, maxPhotos: 4, maxPhotoWidth: 1200, maxImageBytes: 700000 },
   departments: ['Operasional', 'Keuangan', 'SDM & Umum', 'IT', 'Manajemen', 'Sekretariat', 'Pemasaran', 'Lainnya'],
   visitTypes: ['Kunjungan Vendor','Kunjungan Klien','Pertemuan Mitra','Koordinasi WhatsApp','Rapat / Diskusi','Monitoring Pekerjaan','Tindak Lanjut','Laporan Lainnya'],
@@ -218,15 +218,20 @@ function handleGet(req, res, url, u) {
   if (url.pathname === '/api/auth/me') return reply(res, 200, { user:u ? exposed(u) : null, departments:db.departments, visitTypes:db.visitTypes });
   if (!u) return fail(res,401,'Silakan login terlebih dahulu.');
   if (url.pathname === '/api/visits') {
-    const entries = u.role === 'admin' ? db.visits : db.visits.filter(v => v.userId === u.id);
+    const entries = db.visits.filter(v => !v.deletedAt && (u.role === 'admin' || v.userId === u.id));
     return reply(res,200,{ visits:entries.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(v => ({...v, reporter:db.users.find(x=>x.id===v.userId)?.name || 'Pengguna'})) });
+  }
+  if (url.pathname === '/api/visits/trash') {
+    if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat melihat laporan terhapus.');
+    const entries=db.visits.filter(v=>v.deletedAt);
+    return reply(res,200,{visits:entries.slice().sort((a,b)=>b.deletedAt.localeCompare(a.deletedAt)).map(v=>({...v,reporter:db.users.find(x=>x.id===v.userId)?.name||'Pengguna'}))});
   }
   if (url.pathname === '/api/users') {
     if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat melihat daftar pegawai.');
     return reply(res,200,{ users:db.users.map(userList) });
   }
   if (url.pathname === '/api/export') {
-    const entries = u.role === 'admin' ? db.visits : db.visits.filter(v => v.userId === u.id);
+    const entries = db.visits.filter(v => !v.deletedAt && (u.role === 'admin' || v.userId === u.id));
     return reply(res,200,{ exportedAt:now(), visits:entries });
   }
   return fail(res,404,'Endpoint tidak ditemukan.');
@@ -307,6 +312,22 @@ async function handlePost(req,res,url,u) {
     record(u.id,'USER_STATUS_'+body.status.toUpperCase(),target.id);
     return reply(res,200,{user:exposed(target),message:'Status akun diperbarui.'});
   }
+  if (/^\/api\/visits\/[^/]+\/(delete|restore)$/.test(url.pathname)) {
+    if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat menghapus atau memulihkan laporan.');
+    const [, , , id, action] = url.pathname.split('/');
+    const visit=db.visits.find(v=>v.id===id);
+    if (!visit) return fail(res,404,'Laporan tidak ditemukan.');
+    if (action==='delete') {
+      if (visit.deletedAt) return fail(res,409,'Laporan sudah berada di Sampah.');
+      visit.deletedAt=now();visit.deletedBy=u.id;
+      record(u.id,'DELETE_VISIT',visit.id);
+      return reply(res,200,{message:'Laporan dipindahkan ke Sampah dan dapat dipulihkan.'});
+    }
+    if (!visit.deletedAt) return fail(res,409,'Laporan tidak berada di Sampah.');
+    delete visit.deletedAt;delete visit.deletedBy;
+    record(u.id,'RESTORE_VISIT',visit.id);
+    return reply(res,200,{message:'Laporan berhasil dipulihkan.'});
+  }
   if (url.pathname === '/api/visits') {
     const visit=makeVisit(body,u);
     db.visits.push(visit);record(u.id,'CREATE_VISIT',visit.id);
@@ -315,7 +336,7 @@ async function handlePost(req,res,url,u) {
   if (url.pathname.startsWith('/api/visits/') && url.pathname.endsWith('/progress')) {
     const id=url.pathname.split('/')[3];
     const visit=db.visits.find(v=>v.id===id);
-    if (!visit) return fail(res,404,'Laporan tidak ditemukan.');
+    if (!visit || visit.deletedAt) return fail(res,404,'Laporan tidak ditemukan.');
     if (visit.userId!==u.id && u.role!=='admin') return fail(res,403,'Anda tidak berhak menambahkan progres ini.');
     const message=txt(body.message,3500);
     if (message.length<5) return fail(res,400,'Tuliskan perkembangan minimal 5 karakter.');
@@ -338,7 +359,7 @@ async function handlePost(req,res,url,u) {
   if (url.pathname.startsWith('/api/visits/') && url.pathname.endsWith('/update')) {
     const id=url.pathname.split('/')[3];
     const visit=db.visits.find(v=>v.id===id);
-    if (!visit) return fail(res,404,'Laporan tidak ditemukan.');
+    if (!visit || visit.deletedAt) return fail(res,404,'Laporan tidak ditemukan.');
     if (visit.userId!==u.id && u.role!=='admin') return fail(res,403,'Tidak berhak mengedit laporan ini.');
     if (visit.status==='completed') return fail(res,403,'Laporan selesai tidak dapat diubah.');
     const updated=makeVisit(body,u,visit);
