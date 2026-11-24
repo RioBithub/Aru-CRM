@@ -31,7 +31,7 @@ const verifyPassword = (pwd, stored) => {
   } catch { return false; }
 };
 const fresh = () => ({
-  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.2.0', storage: 'json-server' },
+  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.3.0', storage: 'json-server' },
   settings: { gpsRequired: true, maxPhotos: 4, maxPhotoWidth: 1200, maxImageBytes: 700000 },
   departments: ['Operasional', 'Keuangan', 'SDM & Umum', 'IT', 'Manajemen', 'Sekretariat', 'Pemasaran', 'Lainnya'],
   visitTypes: ['Kunjungan Vendor','Kunjungan Klien','Pertemuan Mitra','Koordinasi WhatsApp','Rapat / Diskusi','Monitoring Pekerjaan','Tindak Lanjut','Laporan Lainnya'],
@@ -291,41 +291,63 @@ async function handlePost(req,res,url,u) {
   if (url.pathname === '/api/users') {
     if (u.role!=='admin') return fail(res,403,'Hanya admin yang dapat membuat akun.');
     const username=txt(body.username,40).toLowerCase();
-    if (!safeUsername(username) || txt(body.name,100).length<3 || String(body.password||'').length<8)
-      return fail(res,400,'Lengkapi nama, username valid, dan password minimal 8 karakter.');
+    const password=String(body.password||'');
+    const role=body.role === undefined ? 'staff' : txt(body.role,20);
+    if (!['staff','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
+    if (!safeUsername(username) || txt(body.name,100).length<3 || password.length<8 || password.length>128)
+      return fail(res,400,'Lengkapi nama, username valid, dan password 8–128 karakter.');
     if (db.users.some(x=>x.username===username)) return fail(res,409,'Username sudah terdaftar.');
-    const entry={id:uid(),username,name:txt(body.name,100),department:txt(body.department,80)||'Lainnya',
-      position:txt(body.position,100)||'Staf',email:txt(body.email,160),phone:txt(body.phone,40),profilePhoto:'',
-      passwordHash:hashPassword(String(body.password)),role:'staff',status:'active',mustChangePassword:true,
+    const entry={id:uid(),username,name:txt(body.name,100),
+      department:txt(body.department,80)||(role==='admin'?'Manajemen':'Lainnya'),
+      position:txt(body.position,100)||(role==='admin'?'Administrator Sistem':'Staf'),
+      email:txt(body.email,160),phone:txt(body.phone,40),profilePhoto:'',
+      passwordHash:hashPassword(password),role,status:'active',mustChangePassword:true,
       createdAt:now(),approvedAt:now()};
-    db.users.push(entry);record(u.id,'CREATE_USER',entry.id);
-    return reply(res,201,{user:exposed(entry),message:'Akun aktif dibuat. Password wajib diganti pada login pertama.'});
+    db.users.push(entry);
+    record(u.id,role==='admin'?'CREATE_ADMIN':'CREATE_USER',entry.id);
+    return reply(res,201,{user:exposed(entry),message:role==='admin'
+      ? 'Akun admin baru aktif. Password wajib diganti pada login pertama.'
+      : 'Akun pegawai aktif dibuat. Password wajib diganti pada login pertama.'});
   }
   if (/^\/api\/users\/[^/]+\/edit$/.test(url.pathname)) {
-    if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat mengubah akun pegawai.');
+    if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat mengubah akun pengguna.');
     const id=url.pathname.split('/')[3];
     const target=db.users.find(x=>x.id===id);
-    if (!target || target.role==='admin') return fail(res,404,'Akun pegawai tidak ditemukan atau tidak dapat diubah.');
+    if (!target) return fail(res,404,'Akun pengguna tidak ditemukan.');
+    if (target.id===u.id) return fail(res,403,'Kelola profil sendiri melalui menu Profil Saya.');
     const name=txt(body.name,100);
     const newPassword=body.password === undefined || body.password === null ? '' : String(body.password);
-    if (name.length < 3) return fail(res,400,'Nama pegawai minimal 3 karakter.');
+    const role=body.role === undefined ? target.role : txt(body.role,20);
+    if (!['staff','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
+    if (name.length < 3) return fail(res,400,'Nama pengguna minimal 3 karakter.');
     if (newPassword && (newPassword.length<8 || newPassword.length>128))
       return fail(res,400,'Password baru harus 8–128 karakter.');
+    const roleChanged=role!==target.role;
+    if (roleChanged && role==='admin' && target.status!=='active')
+      return fail(res,400,'Hanya akun aktif yang dapat dijadikan admin.');
+    if (roleChanged && target.role==='admin' && role==='staff' &&
+        db.users.filter(x=>x.role==='admin' && x.status==='active').length<=1)
+      return fail(res,409,'Admin aktif terakhir tidak dapat diturunkan menjadi pegawai.');
     const department=txt(body.department,80) || 'Lainnya';
     const position=txt(body.position,100) || 'Staf';
     const email=txt(body.email,160);
     const phone=txt(body.phone,40);
     target.name=name;target.department=department;target.position=position;
     target.email=email;target.phone=phone;
+    if (roleChanged) {
+      target.role=role;
+      if (role==='admin') target.mustChangePassword=true;
+    }
     if (newPassword) {
       target.passwordHash=hashPassword(newPassword);
       target.mustChangePassword=true;
-      for (const [key,sess] of sessions) if (sess.userId===target.id) sessions.delete(key);
     }
-    record(u.id,newPassword?'ADMIN_RESET_PASSWORD':'ADMIN_EDIT_USER',target.id);
-    return reply(res,200,{user:userList(target),message:newPassword
-      ? 'Data pegawai diperbarui dan password direset. Pegawai wajib mengganti password saat login berikutnya.'
-      : 'Data pegawai berhasil diperbarui.'});
+    if (newPassword || roleChanged)
+      for (const [key,sess] of sessions) if (sess.userId===target.id) sessions.delete(key);
+    record(u.id,roleChanged?(role==='admin'?'PROMOTE_ADMIN':'DEMOTE_ADMIN'):(newPassword?'ADMIN_RESET_PASSWORD':'ADMIN_EDIT_USER'),target.id);
+    return reply(res,200,{user:userList(target),message:roleChanged
+      ? (role==='admin'?'Akun berhasil dijadikan admin. Pengguna wajib login kembali dan mengganti password.':'Hak admin dicabut. Pengguna perlu login kembali.')
+      : (newPassword?'Data akun diperbarui dan password direset. Pengguna wajib mengganti password saat login berikutnya.':'Data akun berhasil diperbarui.')});
   }
   if (url.pathname.startsWith('/api/users/') && url.pathname.endsWith('/status')) {
     if (u.role!=='admin') return fail(res,403,'Hanya admin yang dapat menyetujui akun.');
