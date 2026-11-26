@@ -31,7 +31,7 @@ const verifyPassword = (pwd, stored) => {
   } catch { return false; }
 };
 const fresh = () => ({
-  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '4.4.0', storage: 'json-server' },
+  app: { name: 'ARU Visit CRM', organization: 'PT ARU Raharja', version: '5.0.0', storage: 'json-server' },
   settings: { gpsRequired: true, maxPhotos: 4, maxPhotoWidth: 1200, maxImageBytes: 700000 },
   departments: ['Operasional', 'Keuangan', 'SDM & Umum', 'IT', 'Manajemen', 'Sekretariat', 'Pemasaran', 'Lainnya'],
   visitTypes: ['Kunjungan Vendor','Kunjungan Klien','Pertemuan Mitra','Koordinasi WhatsApp','Rapat / Diskusi','Monitoring Pekerjaan','Tindak Lanjut','Laporan Lainnya'],
@@ -198,9 +198,16 @@ function makeVisit(input, user, prev=null) {
   if(rawFields.length>12) throw {status:400,message:'Maksimal 12 kolom informasi tambahan.'};
   v.customFields=rawFields.map(f=>({label:txt(f?.label,80),value:txt(f?.value,1200)})).filter(f=>f.label&&f.value);
   v.evidence=parseEvidence(input.evidence||[],6);
+  const confirmationIndex=input.confirmationEvidenceIndex;
+  const confirmationEvidence=Number.isInteger(confirmationIndex) && confirmationIndex>=0 ? v.evidence[confirmationIndex] : null;
+  v.confirmationMethod=v.signature?'signature':confirmationEvidence && activityMode==='remote'?'electronic':null;
+  v.confirmationEvidenceId=v.confirmationMethod==='electronic'?confirmationEvidence.id:null;
   // Drafts may be incomplete, but a completed report must have evidence of the activity.
   if (v.status==='completed') {
     const fieldActivity=activityMode==='onsite'||activityMode==='hybrid';
+    if (!v.signerName) throw {status:400,message:'Nama pihak yang mengonfirmasi laporan wajib diisi.'};
+    if (fieldActivity && !v.signature) throw {status:400,message:'Tanda tangan pihak terkait wajib untuk kegiatan tatap muka/hybrid.'};
+    if (!fieldActivity && !v.confirmationMethod) throw {status:400,message:'Konfirmasi elektronik wajib: tanda tangan atau pilih lampiran yang membuktikan konfirmasi pihak terkait.'};
     if (fieldActivity && !v.photos.length)
       throw {status:400,message:'Laporan tatap muka/lapangan wajib melampirkan minimal 1 foto kegiatan.'};
     if (!v.evidence.length)
@@ -228,9 +235,10 @@ function mutationAllowed(req) {
 function handleGet(req, res, url, u) {
   if (url.pathname === '/api/auth/me') return reply(res, 200, { user:u ? exposed(u) : null, departments:db.departments, visitTypes:db.visitTypes });
   if (!u) return fail(res,401,'Silakan login terlebih dahulu.');
+  if (u.mustChangePassword) return fail(res,403,'Ganti password awal terlebih dahulu.');
   if (url.pathname === '/api/visits') {
-    const entries = db.visits.filter(v => !v.deletedAt && (u.role === 'admin' || v.userId === u.id));
-    return reply(res,200,{ visits:entries.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(v => ({...v, reporter:db.users.find(x=>x.id===v.userId)?.name || 'Pengguna'})) });
+    const entries = db.visits.filter(v => !v.deletedAt && (['admin','supervisor'].includes(u.role) || v.userId === u.id));
+    return reply(res,200,{ visits:entries.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(v => ({...v, reporter:db.users.find(x=>x.id===v.userId)?.name || 'Pengguna', reporterDepartment:db.users.find(x=>x.id===v.userId)?.department || '-'})) });
   }
   if (url.pathname === '/api/visits/trash') {
     if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat melihat laporan terhapus.');
@@ -242,7 +250,7 @@ function handleGet(req, res, url, u) {
     return reply(res,200,{ users:db.users.map(userList) });
   }
   if (url.pathname === '/api/export') {
-    const entries = db.visits.filter(v => !v.deletedAt && (u.role === 'admin' || v.userId === u.id));
+    const entries = db.visits.filter(v => !v.deletedAt && (['admin','supervisor'].includes(u.role) || v.userId === u.id));
     return reply(res,200,{ exportedAt:now(), visits:entries });
   }
   return fail(res,404,'Endpoint tidak ditemukan.');
@@ -304,21 +312,21 @@ async function handlePost(req,res,url,u) {
     const username=txt(body.username,40).toLowerCase();
     const password=String(body.password||'');
     const role=body.role === undefined ? 'staff' : txt(body.role,20);
-    if (!['staff','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
+    if (!['staff','supervisor','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
     if (!safeUsername(username) || txt(body.name,100).length<3 || password.length<8 || password.length>128)
       return fail(res,400,'Lengkapi nama, username valid, dan password 8–128 karakter.');
     if (db.users.some(x=>x.username===username)) return fail(res,409,'Username sudah terdaftar.');
     const entry={id:uid(),username,name:txt(body.name,100),
-      department:txt(body.department,80)||(role==='admin'?'Manajemen':'Lainnya'),
-      position:txt(body.position,100)||(role==='admin'?'Administrator Sistem':'Staf'),
+      department:txt(body.department,80)||(role==='staff'?'Lainnya':'Manajemen'),
+      position:txt(body.position,100)||(role==='admin'?'Administrator Sistem':role==='supervisor'?'Supervisor':'Staf'),
       email:txt(body.email,160),phone:txt(body.phone,40),profilePhoto:'',
       passwordHash:hashPassword(password),role,status:'active',mustChangePassword:true,
       createdAt:now(),approvedAt:now()};
     db.users.push(entry);
-    record(u.id,role==='admin'?'CREATE_ADMIN':'CREATE_USER',entry.id);
+    record(u.id,role==='admin'?'CREATE_ADMIN':role==='supervisor'?'CREATE_SUPERVISOR':'CREATE_USER',entry.id);
     return reply(res,201,{user:exposed(entry),message:role==='admin'
       ? 'Akun admin baru aktif. Password wajib diganti pada login pertama.'
-      : 'Akun pegawai aktif dibuat. Password wajib diganti pada login pertama.'});
+      : role==='supervisor'?'Akun supervisor aktif dibuat. Password wajib diganti pada login pertama.':'Akun pegawai aktif dibuat. Password wajib diganti pada login pertama.'});
   }
   if (/^\/api\/users\/[^/]+\/edit$/.test(url.pathname)) {
     if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat mengubah akun pengguna.');
@@ -329,14 +337,14 @@ async function handlePost(req,res,url,u) {
     const name=txt(body.name,100);
     const newPassword=body.password === undefined || body.password === null ? '' : String(body.password);
     const role=body.role === undefined ? target.role : txt(body.role,20);
-    if (!['staff','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
+    if (!['staff','supervisor','admin'].includes(role)) return fail(res,400,'Peran akun tidak valid.');
     if (name.length < 3) return fail(res,400,'Nama pengguna minimal 3 karakter.');
     if (newPassword && (newPassword.length<8 || newPassword.length>128))
       return fail(res,400,'Password baru harus 8–128 karakter.');
     const roleChanged=role!==target.role;
-    if (roleChanged && role==='admin' && target.status!=='active')
-      return fail(res,400,'Hanya akun aktif yang dapat dijadikan admin.');
-    if (roleChanged && target.role==='admin' && role==='staff' &&
+    if (roleChanged && role!=='staff' && target.status!=='active')
+      return fail(res,400,'Hanya akun aktif yang dapat dijadikan admin atau supervisor.');
+    if (roleChanged && target.role==='admin' && role!=='admin' &&
         db.users.filter(x=>x.role==='admin' && x.status==='active').length<=1)
       return fail(res,409,'Admin aktif terakhir tidak dapat diturunkan menjadi pegawai.');
     const department=txt(body.department,80) || 'Lainnya';
@@ -347,7 +355,7 @@ async function handlePost(req,res,url,u) {
     target.email=email;target.phone=phone;
     if (roleChanged) {
       target.role=role;
-      if (role==='admin') target.mustChangePassword=true;
+      if (role!=='staff') target.mustChangePassword=true;
     }
     if (newPassword) {
       target.passwordHash=hashPassword(newPassword);
@@ -355,9 +363,9 @@ async function handlePost(req,res,url,u) {
     }
     if (newPassword || roleChanged)
       for (const [key,sess] of sessions) if (sess.userId===target.id) sessions.delete(key);
-    record(u.id,roleChanged?(role==='admin'?'PROMOTE_ADMIN':'DEMOTE_ADMIN'):(newPassword?'ADMIN_RESET_PASSWORD':'ADMIN_EDIT_USER'),target.id);
+    record(u.id,roleChanged?('CHANGE_ROLE_'+role.toUpperCase()):(newPassword?'ADMIN_RESET_PASSWORD':'ADMIN_EDIT_USER'),target.id);
     return reply(res,200,{user:userList(target),message:roleChanged
-      ? (role==='admin'?'Akun berhasil dijadikan admin. Pengguna wajib login kembali dan mengganti password.':'Hak admin dicabut. Pengguna perlu login kembali.')
+      ? (role==='staff'?'Hak akses diubah menjadi pegawai. Pengguna perlu login kembali.':'Hak akses diubah menjadi '+role+'. Pengguna wajib login kembali dan mengganti password.')
       : (newPassword?'Data akun diperbarui dan password direset. Pengguna wajib mengganti password saat login berikutnya.':'Data akun berhasil diperbarui.')});
   }
   if (url.pathname.startsWith('/api/users/') && url.pathname.endsWith('/status')) {
@@ -371,6 +379,7 @@ async function handlePost(req,res,url,u) {
     record(u.id,'USER_STATUS_'+body.status.toUpperCase(),target.id);
     return reply(res,200,{user:exposed(target),message:'Status akun diperbarui.'});
   }
+  if (u.role==='supervisor' && (url.pathname==='/api/visits' || url.pathname.startsWith('/api/visits/'))) return fail(res,403,'Supervisor hanya dapat melihat, mengekspor, dan mencetak laporan.');
   if (/^\/api\/visits\/[^/]+\/(delete|restore)$/.test(url.pathname)) {
     if (u.role !== 'admin') return fail(res,403,'Hanya admin yang dapat menghapus atau memulihkan laporan.');
     const [, , , id, action] = url.pathname.split('/');
